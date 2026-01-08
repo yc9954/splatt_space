@@ -3,8 +3,6 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
 def enableProguardInReleaseBuilds = false
-def jscFlavor = 'org.webkit:android-jsc:+'
-def hermesEnabled = project.ext.react.get("enableHermes", true)
 
 android {
     ndkVersion rootProject.ext.ndkVersion
@@ -65,10 +63,5 @@ react {
 dependencies {
     implementation("com.facebook.react:react-android")
     implementation("com.facebook.react:flipper-integration")
-
-    if (hermesEnabled.toBoolean()) {
-        implementation("com.facebook.react:hermes-android")
-    } else {
-        implementation jscFlavor
-    }
+    implementation("com.facebook.react:hermes-android")
 }
