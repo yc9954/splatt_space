@@ -12,29 +12,17 @@ yarn-error.log
 
 # Android
 android/app/build/
+android/build/
 android/.gradle/
+android/app/.cxx/
 android/local.properties
-
-# iOS
-ios/Pods/
-ios/build/
-*.xcworkspace
-!default.xcworkspace
+*.hprof
 
 # Bundle artifacts
 *.jsbundle
 
-# CocoaPods
-/ios/Pods/
-
 # VS Code
 .vscode/
-
-# Fastlane
-ios/fastlane/report.xml
-ios/fastlane/Preview.html
-ios/fastlane/screenshots
-ios/fastlane/test_output
 
 # IntelliJ
 *.iml
