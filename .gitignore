@@ -13,9 +13,6 @@ yarn-error.log
 # Android
 android/app/build/
 android/.gradle/
-android/gradle/
-android/gradlew
-android/gradlew.bat
 android/local.properties
 
 # iOS

@@ -16,8 +16,6 @@ react {
     nodeExecutableAndArgs = ["node"]
 
     bundleCommand = "bundle"
-    bundleConfig = file(../../bundle.config.js)
-    bundleAssetName = "MyApp.android.bundle"
     entryFile = file("../../index.js")
     extraPackagerArgs = []
 
