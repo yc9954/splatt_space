@@ -1,5 +1,5 @@
 rootProject.name = 'TravelSpace3D'
-apply from: file("../node_modules/@react-native/gradle-plugin/settings.gradle")
+apply from: file("../node_modules/@react-native/gradle-plugin/settings.gradle.kts")
 includeBuild('../node_modules/@react-native/gradle-plugin')
 
 include ':app'
