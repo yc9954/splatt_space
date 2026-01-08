@@ -2,32 +2,9 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
-react {
-    /* Folders */
-    root = file("../../")
-    reactNativeDir = file("../../node_modules/react-native")
-    codegenDir = file("../../node_modules/@react-native/codegen")
-    cliFile = file("../../node_modules/react-native/cli.js")
-
-    /* Variants */
-    debuggableVariants = ["liteDebug", "debug"]
-
-    /* Bundling */
-    nodeExecutableAndArgs = ["node"]
-
-    bundleCommand = "bundle"
-    entryFile = file("../../index.js")
-    extraPackagerArgs = []
-
-    /* Hermes Commands */
-    hermesCommand = "../../node_modules/react-native/sdks/hermesc/%OS-BIN%/hermesc"
-
-    /* Autolinking */
-    autolinkLibrariesWithApp()
-}
-
 def enableProguardInReleaseBuilds = false
 def jscFlavor = 'org.webkit:android-jsc:+'
+def hermesEnabled = project.ext.react.get("enableHermes", true)
 
 android {
     ndkVersion rootProject.ext.ndkVersion
@@ -59,6 +36,30 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+}
+
+react {
+    /* Folders */
+    root = file("../../")
+    reactNativeDir = file("../../node_modules/react-native")
+    codegenDir = file("../../node_modules/@react-native/codegen")
+    cliFile = file("../../node_modules/react-native/cli.js")
+
+    /* Variants */
+    debuggableVariants = ["liteDebug", "debug"]
+
+    /* Bundling */
+    nodeExecutableAndArgs = ["node"]
+
+    bundleCommand = "bundle"
+    entryFile = file("../../index.js")
+    extraPackagerArgs = []
+
+    /* Hermes Commands */
+    hermesCommand = "../../node_modules/react-native/sdks/hermesc/%OS-BIN%/hermesc"
+
+    /* Autolinking */
+    autolinkLibrariesWithApp()
 }
 
 dependencies {
