@@ -13,11 +13,11 @@ import {
     View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { InteractiveSceneCard } from '../../components/InteractiveSceneCard';
-import { api } from '../../services/api';
-import { getPostFromCache, setPostInCache } from '../../contexts/PostContext';
-import { StorageService } from '../../services/storage';
-import type { Post } from '../../types';
+import { InteractiveSceneCard } from '@/components/InteractiveSceneCard';
+import { api } from '@/services/api';
+import { getPostFromCache, setPostInCache } from '@/contexts/PostContext';
+import { StorageService } from '@/services/storage';
+import type { Post } from '@/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (SCREEN_WIDTH - 40) / 2; // 2 columns with padding (reduced padding for larger items)

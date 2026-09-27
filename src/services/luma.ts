@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { LumaConvertRequest, LumaConvertResponse } from '../types';
+import type { LumaConvertRequest, LumaConvertResponse } from '@/types';
 
 const LUMA_API_KEY = process.env.EXPO_PUBLIC_LUMA_API_KEY || 'your_luma_api_key_here';
 const LUMA_API_URL = 'https://api.lumalabs.ai/v1';

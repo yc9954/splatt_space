@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { Post } from '../types';
+import type { Post } from '@/types';
 
 interface PostCardProps {
   post: Post;

@@ -14,8 +14,8 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 // WebBrowser를 완료 후 닫도록 설정
 WebBrowser.maybeCompleteAuthSession();

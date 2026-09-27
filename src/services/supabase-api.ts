@@ -1,5 +1,5 @@
-import { supabase } from '../lib/supabase';
-import type { Post, User, Comment, CreatePostRequest } from '../types';
+import { supabase } from '@/lib/supabase';
+import type { Post, User, Comment, CreatePostRequest } from '@/types';
 
 // User profile type from Supabase
 interface SupabaseProfile {

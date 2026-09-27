@@ -10,9 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { kiriService } from '../services/kiri';
-import type { KiriTaskStatus } from '../services/kiri';
-import { supabase } from '../lib/supabase';
+import { kiriService } from '@/services/kiri';
+import type { KiriTaskStatus } from '@/services/kiri';
+import { supabase } from '@/lib/supabase';
 
 export default function KiriProcessingScreen() {
   const params = useLocalSearchParams<{ 

@@ -33,7 +33,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
         {/* Logo Image */}
         <Image
-          source={require('../assets/images/logo.png')}
+          source={require('../../assets/images/logo.png')}
           style={styles.logo}
           resizeMode="contain"
         />

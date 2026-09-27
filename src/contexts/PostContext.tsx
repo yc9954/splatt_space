@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import type { Post } from '../types';
+import type { Post } from '@/types';
 
 interface PostContextType {
   updatePost: (postId: string, updates: Partial<Post>) => void;

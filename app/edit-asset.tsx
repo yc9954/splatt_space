@@ -15,8 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { api } from '../services/api';
-import { lumaGalleryAssets } from '../services/mockData';
+import { api } from '@/services/api';
+import { lumaGalleryAssets } from '@/services/mockData';
 
 type EditMode = 'none' | 'removeBackground' | 'addText';
 

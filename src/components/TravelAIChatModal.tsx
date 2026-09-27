@@ -14,8 +14,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
-import { openaiService, type ChatMessage } from '../services/openai';
+import { useAuth } from '@/contexts/AuthContext';
+import { openaiService, type ChatMessage } from '@/services/openai';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 

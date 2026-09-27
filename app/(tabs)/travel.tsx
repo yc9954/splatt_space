@@ -11,8 +11,8 @@ import {
   View,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { TravelAIChatModal } from '../../components/TravelAIChatModal';
-import { travelAssets, type TravelAsset } from '../../services/mockData';
+import { TravelAIChatModal } from '@/components/TravelAIChatModal';
+import { travelAssets, type TravelAsset } from '@/services/mockData';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 

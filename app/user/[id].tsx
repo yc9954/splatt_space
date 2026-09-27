@@ -12,9 +12,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useAuth } from '../../contexts/AuthContext';
-import { api } from '../../services/api';
-import type { Post, User } from '../../types';
+import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/services/api';
+import type { Post, User } from '@/types';
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

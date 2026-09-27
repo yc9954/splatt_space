@@ -6,9 +6,9 @@ import 'react-native-reanimated';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { AuthProvider, useAuth } from '../contexts/AuthContext';
-import { PostProvider } from '../contexts/PostContext';
-import CustomSplashScreen from '../components/SplashScreen';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { PostProvider } from '@/contexts/PostContext';
+import CustomSplashScreen from '@/components/SplashScreen';
 
 // 네이티브 스플래시 자동 숨김 방지
 SplashScreen.preventAutoHideAsync();

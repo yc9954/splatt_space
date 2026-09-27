@@ -8,7 +8,7 @@ import type {
   User,
   CreatePostRequest,
   Comment,
-} from '../types';
+} from '@/types';
 
 class ApiService {
   // ==================== Auth ====================

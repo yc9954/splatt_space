@@ -16,11 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { api } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
-import { updatePostInCache } from '../contexts/PostContext';
-import { StorageService } from '../services/storage';
-import type { Post, Comment } from '../types';
+import { api } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { updatePostInCache } from '@/contexts/PostContext';
+import { StorageService } from '@/services/storage';
+import type { Post, Comment } from '@/types';
 
 export default function AssetViewerScreen() {
   const { postId } = useLocalSearchParams<{ postId: string }>();

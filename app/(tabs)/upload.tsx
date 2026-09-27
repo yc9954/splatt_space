@@ -16,9 +16,9 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { lumaGalleryAssets } from '../../services/mockData';
-import { kiriService } from '../../services/kiri';
-import { useAuth } from '../../contexts/AuthContext';
+import { lumaGalleryAssets } from '@/services/mockData';
+import { kiriService } from '@/services/kiri';
+import { useAuth } from '@/contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 const GRID_ITEM_SIZE = (width - 48) / 3;

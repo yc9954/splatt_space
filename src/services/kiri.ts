@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 const KIRI_API_KEY = process.env.EXPO_PUBLIC_KIRI_API_KEY || '';
 const KIRI_API_URL = 'https://api.kiriengine.app/api/v1';

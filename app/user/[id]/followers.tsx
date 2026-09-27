@@ -11,8 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { api } from '../../../services/api';
-import type { User } from '../../../types';
+import { api } from '@/services/api';
+import type { User } from '@/types';
 
 export default function FollowersScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

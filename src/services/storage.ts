@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Post } from '../types';
+import type { Post } from '@/types';
 
 const AUTH_TOKEN_KEY = '@travelspace3d_auth_token';
 const USER_DATA_KEY = '@travelspace3d_user_data';

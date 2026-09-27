@@ -13,10 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import { api } from '../../services/api';
-import { getPostFromCache, setPostInCache } from '../../contexts/PostContext';
-import { StorageService } from '../../services/storage';
-import type { Post } from '../../types';
+import { api } from '@/services/api';
+import { getPostFromCache, setPostInCache } from '@/contexts/PostContext';
+import { StorageService } from '@/services/storage';
+import type { Post } from '@/types';
 
 export default function ExploreScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
