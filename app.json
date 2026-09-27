@@ -1,20 +1,22 @@
 {
   "expo": {
-    "name": "SplatSpace",
-    "slug": "splatspace",
+    "name": "Splatt Space",
+    "slug": "splatt-space",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
-    "scheme": "splatspace",
+    "scheme": "splatt-space",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.splatspace.app",
-      "associatedDomains": ["applinks:uvyttgmfepjyiglggmgz.supabase.co"]
+      "bundleIdentifier": "com.splattspace.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Splatt Space records short videos to turn places into 3D captures."
+      }
     },
     "android": {
-      "package": "com.splatspace.app",
+      "package": "com.splattspace.app",
       "adaptiveIcon": {
         "backgroundColor": "#000000",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -25,32 +27,29 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "CAMERA",
+        "RECORD_AUDIO",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "READ_MEDIA_IMAGES"
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO"
       ],
       "intentFilters": [
         {
           "action": "VIEW",
           "autoVerify": true,
-          "data": [
-            {
-              "scheme": "splatspace"
-            },
-            {
-              "scheme": "exp"
-            }
-          ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "data": [{ "scheme": "splatt-space" }, { "scheme": "exp" }],
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "Splatt Space",
+      "shortName": "Splatt",
+      "description": "A social app for sharing Gaussian-splat 3D travel captures.",
+      "backgroundColor": "#000000",
+      "themeColor": "#4A90E2"
     },
     "splash": {
       "image": "./assets/images/splash-icon.png",
@@ -62,8 +61,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "앱에서 여행 사진을 선택하고 3D로 변환하기 위해 사진 접근 권한이 필요합니다.",
-          "cameraPermission": "여행 사진을 촬영하기 위해 카메라 권한이 필요합니다."
+          "photosPermission": "Splatt Space needs access to your photos to pick a travel photo or video to turn into 3D.",
+          "cameraPermission": "Splatt Space uses the camera to capture places in 3D.",
+          "microphonePermission": "Splatt Space records audio with your capture videos."
         }
       ]
     ],

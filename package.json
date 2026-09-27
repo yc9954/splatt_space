@@ -1,13 +1,21 @@
 {
-  "name": "travelspace-3d",
-  "main": "expo-router/entry",
+  "name": "splatt-space",
   "version": "1.0.0",
+  "description": "A social app for sharing Gaussian-splat 3D travel captures.",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yc9954/splatt_space.git"
+  },
+  "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "export:web": "expo export --platform web",
+    "typecheck": "tsc --noEmit",
     "lint": "expo lint"
   },
   "dependencies": {
@@ -54,6 +62,5 @@
     "eslint-config-expo": "~10.0.0",
     "supabase": "^2.72.6",
     "typescript": "~5.9.2"
-  },
-  "private": true
+  }
 }

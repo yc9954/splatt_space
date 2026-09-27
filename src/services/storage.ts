@@ -1,11 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Post } from '@/types';
 
-const AUTH_TOKEN_KEY = '@travelspace3d_auth_token';
-const USER_DATA_KEY = '@travelspace3d_user_data';
-const USER_POSTS_KEY = '@travelspace3d_user_posts';
-const LIKES_STATE_KEY = '@travelspace3d_likes_state';
-const POST_COUNTS_KEY = '@travelspace3d_post_counts'; // postId -> { likesCount, commentsCount }
+const AUTH_TOKEN_KEY = '@splatt_space_auth_token';
+const USER_DATA_KEY = '@splatt_space_user_data';
+const USER_POSTS_KEY = '@splatt_space_user_posts';
+const LIKES_STATE_KEY = '@splatt_space_likes_state';
+const POST_COUNTS_KEY = '@splatt_space_post_counts'; // postId -> { likesCount, commentsCount }
 
 export const StorageService = {
   async saveAuthToken(token: string): Promise<void> {
@@ -48,7 +48,7 @@ export const StorageService = {
     await this.saveUserPosts(posts);
   },
 
-  // 좋아요 상태 저장 (postId -> isLiked)
+  // Like state per post (postId -> isLiked)
   async saveLikeState(postId: string, isLiked: boolean): Promise<void> {
     try {
       const likesState = await this.getLikesState();
@@ -61,24 +61,24 @@ export const StorageService = {
     }
   },
 
-  // 좋아요 상태 조회
+  // All like states
   async getLikesState(): Promise<Record<string, boolean>> {
     const data = await AsyncStorage.getItem(LIKES_STATE_KEY);
     return data ? JSON.parse(data) : {};
   },
 
-  // 특정 post의 좋아요 상태 조회
+  // Like state for one post
   async getLikeState(postId: string): Promise<boolean | null> {
     const likesState = await this.getLikesState();
     return likesState[postId] ?? null;
   },
 
-  // 좋아요 상태 일괄 저장
+  // Replace all like states
   async saveLikesState(likesState: Record<string, boolean>): Promise<void> {
     await AsyncStorage.setItem(LIKES_STATE_KEY, JSON.stringify(likesState));
   },
 
-  // Post 카운트 저장 (likesCount, commentsCount)
+  // Counts per post (likesCount, commentsCount)
   async savePostCounts(postId: string, counts: { likesCount: number; commentsCount: number }): Promise<void> {
     try {
       const postCounts = await this.getPostCounts();
@@ -91,20 +91,20 @@ export const StorageService = {
     }
   },
 
-  // Post 카운트 조회
+  // All post counts
   async getPostCounts(): Promise<Record<string, { likesCount: number; commentsCount: number }>> {
     const data = await AsyncStorage.getItem(POST_COUNTS_KEY);
     return data ? JSON.parse(data) : {};
   },
 
-  // 특정 post의 카운트 조회
+  // Counts for one post
   async getPostCount(postId: string): Promise<{ likesCount: number; commentsCount: number } | null> {
     const postCounts = await this.getPostCounts();
     return postCounts[postId] ?? null;
   },
 
-  // 좋아요 상태와 카운트 일관성 검증 및 수정
-  // likesCount가 0인데 isLiked가 true인 경우를 수정
+  // Repair inconsistent local state:
+  // a post cannot be liked while its like count is 0
   async validateAndFixLikeState(): Promise<void> {
     try {
       const postCounts = await this.getPostCounts();
@@ -112,11 +112,11 @@ export const StorageService = {
       let hasChanges = false;
       const fixedLikesState = { ...likesState };
 
-      // 모든 post에 대해 검증
+      // Check every post
       for (const [postId, counts] of Object.entries(postCounts)) {
         const isLiked = likesState[postId];
         
-        // likesCount가 0인데 isLiked가 true인 경우 수정
+        // Reset the like flag
         if (counts.likesCount === 0 && isLiked === true) {
           console.log(`[Storage] Fixing inconsistent like state for post ${postId}: likesCount=0 but isLiked=true`);
           fixedLikesState[postId] = false;
@@ -124,7 +124,7 @@ export const StorageService = {
         }
       }
 
-      // 변경사항이 있으면 저장
+      // Persist only if something changed
       if (hasChanges) {
         await this.saveLikesState(fixedLikesState);
         console.log(`[Storage] Fixed ${Object.keys(fixedLikesState).filter(id => likesState[id] !== fixedLikesState[id]).length} inconsistent like states`);
