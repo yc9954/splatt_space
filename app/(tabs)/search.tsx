@@ -95,7 +95,7 @@ export default function SearchScreen() {
           )}
           ListHeaderComponent={
             <Text style={styles.resultsTitle}>
-              {results.length} {results.length === 1 ? 'result' : 'results'} for "{query.trim()}"
+              {results.length} {results.length === 1 ? 'result' : 'results'} for {'"'}{query.trim()}{'"'}
             </Text>
           }
           ListEmptyComponent={

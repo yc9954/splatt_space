@@ -12,7 +12,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { kiriService } from '@/services/kiri';
 import type { KiriTaskStatus } from '@/services/kiri';
-import { supabase } from '@/lib/supabase';
 
 export default function KiriProcessingScreen() {
   const params = useLocalSearchParams<{ 
@@ -21,7 +20,7 @@ export default function KiriProcessingScreen() {
   }>();
   
   const [status, setStatus] = useState<KiriTaskStatus | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
@@ -265,7 +264,7 @@ export default function KiriProcessingScreen() {
           <View style={styles.infoCard}>
             <Ionicons name="information-circle-outline" size={24} color="#6366F1" />
             <View style={styles.infoContent}>
-              <Text style={styles.infoTitle}>What's happening?</Text>
+              <Text style={styles.infoTitle}>What&apos;s happening?</Text>
               <Text style={styles.infoDescription}>
                 Your video is being processed into a 3D Gaussian Splatting model. 
                 This may take a few minutes depending on video length and complexity.

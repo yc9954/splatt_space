@@ -282,7 +282,7 @@ class KiriService {
             error: task.error_message,
           };
         }
-      } catch (dbError) {
+      } catch {
         // Continue to API check if DB fails
         console.log('Could not get status from DB, trying API...');
       }

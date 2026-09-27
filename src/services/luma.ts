@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { LumaConvertRequest, LumaConvertResponse } from '@/types';
+import type { LumaConvertResponse } from '@/types';
 
 import { config, LUMA_API_URL } from '@/lib/config';
 
