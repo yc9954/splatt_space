@@ -5,6 +5,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -161,6 +162,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     color: Colors.text,
+    ...Platform.select({ web: { outlineStyle: 'none' } as object }),
   },
   section: {
     paddingHorizontal: 16,

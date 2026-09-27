@@ -3,6 +3,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -112,7 +113,7 @@ export default function TravelScreen() {
             </TouchableOpacity>
             <View style={styles.modalTitles}>
               <Text style={styles.modalTitle}>{selectedScene?.name}</Text>
-              <Text style={styles.modalSubtitle}>{selectedScene?.location}</Text>
+              <Text style={styles.modalSubtitle}>{selectedScene?.location} · sample Luma capture</Text>
             </View>
             <View style={{ width: 40 }} />
           </SafeAreaView>
@@ -164,6 +165,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     color: Colors.text,
+    ...Platform.select({ web: { outlineStyle: 'none' } as object }),
   },
   legend: {
     alignSelf: 'flex-start',

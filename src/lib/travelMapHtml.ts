@@ -1,8 +1,9 @@
 import type { SampleScene } from '@/constants/sampleScenes';
 
 /**
- * MapLibre world map with a pin per 3D capture. Uses free CARTO raster
- * tiles (no API key). Runs inside WebFrame; messages back:
+ * MapLibre world map with a pin per 3D capture. Uses the public OpenStreetMap
+ * raster tiles (no API key; keep usage light and attributed). Runs inside
+ * WebFrame; messages back:
  *   { type: 'mapLoaded' } | { type: 'mapError', error } |
  *   { type: 'viewAsset', assetId, assetName, captureUrl }
  * and exposes window.searchLocation(q), window.getCurrentLocation(), window.centerMap().
@@ -49,18 +50,15 @@ export function buildTravelMapHtml(scenes: SampleScene[]): string {
       style: {
         version: 8,
         sources: {
-          carto: {
+          osm: {
             type: 'raster',
-            tiles: [
-              'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-              'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-              'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-            ],
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
             tileSize: 256,
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+            maxzoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           }
         },
-        layers: [{ id: 'carto', type: 'raster', source: 'carto', minzoom: 0, maxzoom: 22 }]
+        layers: [{ id: 'osm', type: 'raster', source: 'osm', minzoom: 0, maxzoom: 22 }]
       },
       center: HOME.center,
       zoom: HOME.zoom,
