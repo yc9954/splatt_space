@@ -1,37 +1,46 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as AuthSession from 'expo-auth-session';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { BRAND, Colors, Radii } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
-// WebBrowser를 완료 후 닫도록 설정
 WebBrowser.maybeCompleteAuthSession();
+
+const APP_SCHEME = 'splatt-space';
+
+function showError(title: string, message: string) {
+  if (Platform.OS === 'web') window.alert(`${title}\n\n${message}`);
+  else Alert.alert(title, message);
+}
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const { login, refreshAuth, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading, isDemo } = useAuth();
 
-  // 로그인 성공 시 자동으로 피드로 이동
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      console.log('User is authenticated, navigating to feed');
       setIsGoogleLoading(false);
       setIsLoading(false);
       router.replace('/(tabs)/feed');
@@ -40,231 +49,144 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('오류', '이메일과 비밀번호를 입력해주세요.');
+      showError('Missing details', 'Enter your email and password.');
       return;
     }
-
     setIsLoading(true);
     try {
       await login({ email, password });
-      // useEffect에서 isAuthenticated가 true가 되면 자동으로 feed로 이동
     } catch (error: any) {
-      Alert.alert(
-        '로그인 실패',
-        error.response?.data?.message || '이메일 또는 비밀번호가 올바르지 않습니다.'
-      );
+      showError('Could not log in', error?.message || 'Check your email and password and try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const signInWithGoogle = async () => {
+    if (isDemo) {
+      showError('Demo mode', 'Google sign-in needs a Supabase project. Use any email and password to try the demo.');
+      return;
+    }
     try {
       setIsGoogleLoading(true);
-      console.log('🔑 Logging in with Google...');
-
-      // Supabase OAuth URL 생성
-      const redirectUrl = AuthSession.makeRedirectUri({
-        scheme: 'splatspace',
-        useProxy: true,
-      });
-
-      console.log('Redirect URL:', redirectUrl);
-
+      const redirectUrl = AuthSession.makeRedirectUri({ scheme: APP_SCHEME, path: 'auth/callback' });
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: redirectUrl,
-        },
+        options: { redirectTo: redirectUrl, skipBrowserRedirect: Platform.OS !== 'web' },
       });
+      if (error) throw error;
+      if (Platform.OS === 'web' || !data?.url) return; // browser handles the redirect
 
-      if (error) {
-        console.error('Supabase OAuth error:', error);
-        Alert.alert('로그인 실패', error.message || 'Google 로그인에 실패했습니다.');
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+      if (result.type !== 'success' || !result.url) {
         setIsGoogleLoading(false);
         return;
       }
 
-      if (data?.url) {
-        console.log('Opening OAuth URL:', data.url);
+      const fragment = result.url.split('#')[1] ?? result.url.split('?')[1] ?? '';
+      const params = new URLSearchParams(fragment);
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      if (!accessToken || !refreshToken) throw new Error('No session tokens were returned.');
 
-        // WebBrowser로 OAuth URL 열기
-        const result = await WebBrowser.openAuthSessionAsync(
-          data.url,
-          redirectUrl
-        );
-
-        console.log('OAuth result:', result.type);
-
-        if (result.type === 'success' && result.url) {
-          try {
-            console.log('Parsing URL for tokens');
-
-            // URL에서 토큰 추출
-            let accessToken: string | null = null;
-            let refreshToken: string | null = null;
-
-            // Hash fragment (#) 파싱
-            const hashIndex = result.url.indexOf('#');
-            if (hashIndex !== -1) {
-              const hashFragment = result.url.substring(hashIndex + 1);
-              const hashParams = new URLSearchParams(hashFragment);
-              accessToken = hashParams.get('access_token');
-              refreshToken = hashParams.get('refresh_token');
-            }
-
-            // Query params (?) 파싱 (fallback)
-            if (!accessToken) {
-              const queryIndex = result.url.indexOf('?');
-              if (queryIndex !== -1) {
-                const queryFragment = result.url.substring(queryIndex + 1);
-                const queryParams = new URLSearchParams(queryFragment);
-                accessToken = queryParams.get('access_token');
-                refreshToken = queryParams.get('refresh_token');
-              }
-            }
-
-            console.log('Tokens found:', { hasAccessToken: !!accessToken, hasRefreshToken: !!refreshToken });
-
-            if (accessToken && refreshToken) {
-              const { error: sessionError } = await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken,
-              });
-
-              if (sessionError) {
-                console.error('Session error:', sessionError);
-                Alert.alert('로그인 실패', '인증 처리에 실패했습니다.');
-                setIsGoogleLoading(false);
-              } else {
-                console.log('✅ Google OAuth session set successfully');
-                // AuthContext가 자동으로 사용자 정보 업데이트
-              }
-            } else {
-              console.error('No tokens found in URL');
-              Alert.alert('로그인 실패', '인증 토큰을 찾을 수 없습니다.');
-              setIsGoogleLoading(false);
-            }
-          } catch (urlError) {
-            console.error('URL parsing error:', urlError);
-            Alert.alert('로그인 실패', 'URL 파싱 중 오류가 발생했습니다.');
-            setIsGoogleLoading(false);
-          }
-        } else if (result.type === 'cancel') {
-          console.log('User cancelled the login flow');
-          setIsGoogleLoading(false);
-        } else {
-          console.log('OAuth flow did not complete successfully');
-          setIsGoogleLoading(false);
-        }
-      } else {
-        console.error('No OAuth URL returned from Supabase');
-        Alert.alert('로그인 실패', 'OAuth URL을 받아오지 못했습니다.');
-        setIsGoogleLoading(false);
-      }
+      const { error: sessionError } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      if (sessionError) throw sessionError;
+      // AuthContext picks up the SIGNED_IN event and navigates.
     } catch (error: any) {
-      console.error('Google sign in error:', error);
-      Alert.alert('로그인 실패', error.message || 'Google 로그인에 실패했습니다.');
+      showError('Google sign-in failed', error?.message || 'Please try again.');
       setIsGoogleLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        <View style={styles.content}>
-          {/* 로고 섹션 */}
-          <View style={styles.logoContainer}>
-            <Text style={styles.appName}>SplatSpace</Text>
-          </View>
+      <LinearGradient colors={[...Colors.gradient]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} bounces={false}>
+          <SafeAreaView edges={['top']} style={styles.hero}>
+            <View style={styles.logoCircle}>
+              <Ionicons name="cube" size={40} color={Colors.white} />
+            </View>
+            <Text style={styles.title}>{BRAND.name}</Text>
+            <Text style={styles.tagline}>{BRAND.tagline}</Text>
+          </SafeAreaView>
 
-          {/* 로그인 폼 */}
-          <View style={styles.formContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="이메일"
-              placeholderTextColor="#999999"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-            />
+          <View style={styles.card}>
+            {isDemo && (
+              <View style={styles.demoBanner}>
+                <Ionicons name="flask-outline" size={16} color={Colors.primaryDark} />
+                <Text style={styles.demoText}>Demo mode: any email and password will sign you in.</Text>
+              </View>
+            )}
 
-            <View style={styles.passwordContainer}>
+            <View style={styles.inputRow}>
+              <Ionicons name="mail-outline" size={20} color={Colors.textMuted} />
               <TextInput
-                style={styles.passwordInput}
-                placeholder="비밀번호"
-                placeholderTextColor="#999999"
+                style={styles.input}
+                placeholder="Email"
+                placeholderTextColor={Colors.textMuted}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                textContentType="emailAddress"
+              />
+            </View>
+
+            <View style={styles.inputRow}>
+              <Ionicons name="lock-closed-outline" size={20} color={Colors.textMuted} />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor={Colors.textMuted}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 autoComplete="password"
+                textContentType="password"
+                onSubmitEditing={handleLogin}
               />
-              <TouchableOpacity
-                style={styles.eyeIcon}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Ionicons
-                  name={showPassword ? "eye-off" : "eye"}
-                  size={20}
-                  color="#999999"
-                />
+              <TouchableOpacity onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
+                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
-              onPress={handleLogin}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.loginButtonText}>로그인</Text>
-              )}
+            <TouchableOpacity style={styles.forgot} onPress={() => showError('Reset password', 'Password reset is handled through your Supabase project email templates.')}>
+              <Text style={styles.forgotText}>Forgot password?</Text>
             </TouchableOpacity>
 
-            {/* 구분선 */}
-            <View style={styles.dividerContainer}>
+            <TouchableOpacity style={[styles.primaryButton, isLoading && styles.disabled]} onPress={handleLogin} disabled={isLoading} activeOpacity={0.9}>
+              {isLoading ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.primaryButtonText}>Log in</Text>}
+            </TouchableOpacity>
+
+            <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>또는</Text>
+              <Text style={styles.dividerText}>OR</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Google 로그인 버튼 */}
-            <TouchableOpacity
-              style={[styles.googleButton, isGoogleLoading && styles.googleButtonDisabled]}
-              onPress={signInWithGoogle}
-              disabled={isGoogleLoading}
-            >
+            <TouchableOpacity style={[styles.socialButton, isGoogleLoading && styles.disabled]} onPress={signInWithGoogle} disabled={isGoogleLoading} activeOpacity={0.9}>
               {isGoogleLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={Colors.primary} />
               ) : (
                 <>
-                  <Ionicons name="logo-google" size={20} color="#FFFFFF" style={styles.googleIcon} />
-                  <Text style={styles.googleButtonText}>Google로 로그인</Text>
+                  <Ionicons name="logo-google" size={20} color="#4285F4" />
+                  <Text style={styles.socialButtonText}>Continue with Google</Text>
                 </>
               )}
             </TouchableOpacity>
-          </View>
 
-          {/* 회원가입 및 기타 링크 */}
-          <View style={styles.footer}>
-            <Link href="/(auth)/register" asChild>
-              <TouchableOpacity>
-                <Text style={styles.footerLink}>회원가입</Text>
-              </TouchableOpacity>
-            </Link>
-            <Text style={styles.footerDivider}>|</Text>
-            <TouchableOpacity>
-              <Text style={styles.footerLink}>아이디 찾기</Text>
-            </TouchableOpacity>
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>New to {BRAND.name}? </Text>
+              <Link href="/(auth)/register" asChild>
+                <TouchableOpacity>
+                  <Text style={styles.footerLink}>Create an account</Text>
+                </TouchableOpacity>
+              </Link>
+            </View>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
@@ -273,127 +195,155 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.primary,
   },
-  keyboardView: {
+  flex: {
     flex: 1,
   },
-  content: {
+  scroll: {
+    flexGrow: 1,
+    justifyContent: 'flex-end',
+  },
+  hero: {
     flex: 1,
+    minHeight: 260,
+    alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    maxWidth: 400,
+    paddingVertical: 40,
+  },
+  logoCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+  title: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: Colors.white,
+    letterSpacing: -0.5,
+    marginBottom: 6,
+  },
+  tagline: {
+    fontSize: 17,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  card: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 40,
     width: '100%',
+    maxWidth: 520,
     alignSelf: 'center',
   },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 60,
-  },
-  appName: {
-    fontSize: 25,
-    color: '#000000',
-    letterSpacing: 3,
-    fontWeight: '300'
-  },
-  formContainer: {
-    marginBottom: 24,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    fontSize: 15,
-    color: '#000000',
-    marginBottom: 10,
-    backgroundColor: '#FFFFFF',
-  },
-  passwordContainer: {
-    position: 'relative',
-    marginBottom: 10,
-  },
-  passwordInput: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    paddingRight: 45,
-    fontSize: 15,
-    color: '#000000',
-    backgroundColor: '#FFFFFF',
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: 16,
-    top: 14,
-    padding: 4,
-  },
-  loginButton: {
-    backgroundColor: '#000000',
-    borderRadius: 8,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  loginButtonDisabled: {
-    opacity: 0.7,
-  },
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  dividerContainer: {
+  demoBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    gap: 8,
+    backgroundColor: Colors.primarySoft,
+    padding: 12,
+    borderRadius: Radii.md,
+    marginBottom: 18,
+  },
+  demoText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.primaryDark,
+    fontWeight: '500',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.borderStrong,
+    borderRadius: Radii.md,
+    paddingHorizontal: 16,
+    height: 52,
+    marginBottom: 14,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: Colors.text,
+  },
+  forgot: {
+    alignSelf: 'flex-end',
+    marginBottom: 20,
+  },
+  forgotText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  primaryButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: Radii.md,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 22,
+  },
+  primaryButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  disabled: {
+    opacity: 0.7,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 22,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: Colors.borderStrong,
   },
   dividerText: {
-    marginHorizontal: 16,
-    color: '#999999',
-    fontSize: 14,
+    marginHorizontal: 14,
+    color: Colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '500',
   },
-  googleButton: {
+  socialButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4285F4',
-    borderRadius: 8,
-    paddingVertical: 16,
-    marginTop: 8,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.borderStrong,
+    borderRadius: Radii.md,
+    height: 52,
+    backgroundColor: Colors.surface,
+    marginBottom: 22,
   },
-  googleButtonDisabled: {
-    opacity: 0.7,
-  },
-  googleIcon: {
-    marginRight: 8,
-  },
-  googleButtonText: {
-    color: '#FFFFFF',
+  socialButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '500',
+    color: '#374151',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
+    flexWrap: 'wrap',
+  },
+  footerText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
   },
   footerLink: {
-    color: '#666666',
+    color: Colors.primary,
     fontSize: 14,
-  },
-  footerDivider: {
-    color: '#CCCCCC',
-    fontSize: 14,
+    fontWeight: '600',
   },
 });

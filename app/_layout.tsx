@@ -10,7 +10,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { PostProvider } from '@/contexts/PostContext';
 import CustomSplashScreen from '@/components/SplashScreen';
 
-// 네이티브 스플래시 자동 숨김 방지
+// Keep the native splash until our animated splash takes over
 SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
@@ -23,7 +23,7 @@ function RootNavigator() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    // 컴포넌트가 마운트되면 네이티브 스플래시를 즉시 숨김
+    // Hide the native splash as soon as the React tree is mounted
     SplashScreen.hideAsync();
   }, []);
 

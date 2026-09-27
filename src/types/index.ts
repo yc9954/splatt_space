@@ -24,7 +24,7 @@ export interface Post {
   commentsCount: number;
   isLiked: boolean;
   createdAt: string;
-  // 3D 편집 메타데이터
+  // Editor settings applied to the 3D scene
   editMetadata?: {
     textOverlay?: string;
     textPosition?: 'top' | 'center' | 'bottom';
@@ -65,7 +65,7 @@ export interface CreatePostRequest {
   caption: string;
   location?: string;
   hashtags: string[];
-  // 3D 편집 메타데이터
+  // Editor settings applied to the 3D scene
   editMetadata?: {
     textOverlay?: string;
     textPosition?: 'top' | 'center' | 'bottom';

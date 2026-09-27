@@ -1,72 +1,134 @@
-import React, { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
+  Dimensions,
+  FlatList,
+  Image,
   ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
   TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+
+import { Colors } from '@/constants/theme';
+import { api } from '@/services/api';
+import type { Post } from '@/types';
+
+const POPULAR_TAGS = ['Architecture', 'Nature', 'Alps', 'Sculpture', 'Museum', 'Cityscape', 'Night', 'Historical'];
+const RECENT = ['Swiss Alps', 'Sculpture', 'Paris'];
+
+const GAP = 2;
+const COLUMNS = 3;
+const ITEM_SIZE = (Dimensions.get('window').width - GAP * (COLUMNS - 1)) / COLUMNS;
 
 export default function SearchScreen() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [query, setQuery] = useState('');
+  const [posts, setPosts] = useState<Post[]>([]);
 
-  const popularTags = [
-    'Architecture', 'Nature', 'Urban', 'Art', 'Sculpture',
-    'Landscape', 'Museum', 'Historical', 'Modern', 'Vintage',
-  ];
+  useEffect(() => {
+    api.getFeed(1, 50).then(setPosts).catch(() => setPosts([]));
+  }, []);
+
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return posts.filter(
+      (p) =>
+        p.caption.toLowerCase().includes(q) ||
+        p.location?.toLowerCase().includes(q) ||
+        p.user.username.toLowerCase().includes(q) ||
+        p.hashtags.some((tag) => tag.toLowerCase().includes(q.replace(/^#/, '')))
+    );
+  }, [query, posts]);
+
+  const openPost = (post: Post) => router.push({ pathname: '/asset-viewer', params: { postId: post.id } });
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Search</Text>
-      </View>
-
-      <ScrollView style={styles.content}>
-        {/* Search Bar */}
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <Ionicons name="arrow-back" size={24} color={Colors.text} />
+        </TouchableOpacity>
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#94A3B8" />
+          <Ionicons name="search" size={18} color={Colors.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search scenes, users, or tags..."
-            placeholderTextColor="#94A3B8"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
+            placeholder="Search scenes, places, tags or people"
+            placeholderTextColor={Colors.textMuted}
+            value={query}
+            onChangeText={setQuery}
+            autoFocus
+            returnKeyType="search"
           />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#94A3B8" />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={() => setQuery('')} hitSlop={8}>
+              <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
+      </View>
 
-        {/* Popular Tags */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Popular Tags</Text>
-          <View style={styles.tagsContainer}>
-            {popularTags.map((tag) => (
-              <TouchableOpacity key={tag} style={styles.tag}>
-                <Text style={styles.tagText}>#{tag}</Text>
+      {query.trim() ? (
+        <FlatList
+          data={results}
+          keyExtractor={(item) => item.id}
+          numColumns={COLUMNS}
+          columnWrapperStyle={{ marginBottom: GAP }}
+          renderItem={({ item, index }) => (
+            <TouchableOpacity
+              style={[styles.gridItem, index % COLUMNS !== COLUMNS - 1 && { marginRight: GAP }]}
+              onPress={() => openPost(item)}
+              activeOpacity={0.9}
+            >
+              <Image source={{ uri: item.imageUrl }} style={styles.gridImage} />
+              <View style={styles.gridLabel}>
+                <Text style={styles.gridLabelText} numberOfLines={1}>
+                  {item.location || item.user.username}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+          ListHeaderComponent={
+            <Text style={styles.resultsTitle}>
+              {results.length} {results.length === 1 ? 'result' : 'results'} for "{query.trim()}"
+            </Text>
+          }
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Ionicons name="search-outline" size={44} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>No scenes match that yet.</Text>
+            </View>
+          }
+        />
+      ) : (
+        <ScrollView keyboardShouldPersistTaps="handled">
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Popular tags</Text>
+            <View style={styles.tags}>
+              {POPULAR_TAGS.map((tag) => (
+                <TouchableOpacity key={tag} style={styles.tag} onPress={() => setQuery(tag)}>
+                  <Text style={styles.tagText}>#{tag}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recent</Text>
+            {RECENT.map((item) => (
+              <TouchableOpacity key={item} style={styles.recentItem} onPress={() => setQuery(item)}>
+                <Ionicons name="time-outline" size={18} color={Colors.textMuted} />
+                <Text style={styles.recentText}>{item}</Text>
+                <Ionicons name="arrow-forward" size={16} color={Colors.textMuted} />
               </TouchableOpacity>
             ))}
           </View>
-        </View>
-
-        {/* Recent Searches */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Searches</Text>
-          <View style={styles.recentItem}>
-            <Ionicons name="time-outline" size={20} color="#94A3B8" />
-            <Text style={styles.recentText}>Swiss Alps</Text>
-          </View>
-          <View style={styles.recentItem}>
-            <Ionicons name="time-outline" size={20} color="#94A3B8" />
-            <Text style={styles.recentText}>Sculpture</Text>
-          </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -74,81 +136,106 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.surface,
   },
   header: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  content: {
-    flex: 1,
-  },
-  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginTop: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
     gap: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.surfaceInset,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 42,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    color: '#1F2937',
+    fontSize: 15,
+    color: Colors.text,
   },
   section: {
-    marginTop: 24,
     paddingHorizontal: 16,
+    paddingTop: 22,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 16,
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: 12,
   },
-  tagsContainer: {
+  tags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
   tag: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
+    backgroundColor: Colors.primarySoft,
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderRadius: 999,
   },
   tagText: {
-    color: '#6366F1',
+    color: Colors.primaryDark,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   recentItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginBottom: 8,
     gap: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
   recentText: {
-    fontSize: 16,
-    color: '#1F2937',
+    flex: 1,
+    fontSize: 15,
+    color: Colors.text,
+  },
+  resultsTitle: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  gridItem: {
+    width: ITEM_SIZE,
+    height: ITEM_SIZE,
+    backgroundColor: Colors.surfaceInset,
+  },
+  gridImage: {
+    width: '100%',
+    height: '100%',
+  },
+  gridLabel: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  gridLabelText: {
+    color: Colors.white,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  empty: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    gap: 10,
+  },
+  emptyText: {
+    color: Colors.textSecondary,
   },
 });

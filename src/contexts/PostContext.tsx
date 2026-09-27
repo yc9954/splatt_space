@@ -8,7 +8,7 @@ interface PostContextType {
 
 const PostContext = createContext<PostContextType | undefined>(undefined);
 
-// 전역 Post 캐시 (postId -> Post)
+// Module-level post cache (postId -> Post) shared across screens
 const postCache = new Map<string, Post>();
 
 export function PostProvider({ children }: { children: React.ReactNode }) {
@@ -19,10 +19,10 @@ export function PostProvider({ children }: { children: React.ReactNode }) {
     if (existingPost) {
       const updatedPost = { ...existingPost, ...updates };
       postCache.set(postId, updatedPost);
-      // 강제 리렌더링 트리거
+      // Force consumers to re-render
       setUpdateTrigger(prev => prev + 1);
     } else {
-      // 새 post 추가
+      // Insert a new post
       const newPost = updates as Post;
       if (newPost.id) {
         postCache.set(postId, newPost);
@@ -50,7 +50,7 @@ export function usePostContext() {
   return context;
 }
 
-// 전역 함수로 export (Context 없이도 사용 가능)
+// Plain helpers for code that runs outside the React tree
 export function updatePostInCache(postId: string, updates: Partial<Post>) {
   const existingPost = postCache.get(postId);
   if (existingPost) {

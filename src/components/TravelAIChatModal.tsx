@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import { avatarUrl } from '@/lib/avatar';
 import { openaiService, type ChatMessage } from '@/services/openai';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -32,11 +33,11 @@ export function TravelAIChatModal({ visible, onClose }: TravelAIChatModalProps) 
   const scrollViewRef = useRef<ScrollView>(null);
   const hasStartedChat = messages.length > 0;
   
-  const userProfileImage = user?.profileImage || 'https://cdn-luma.com/public/avatars/avatar-default.jpg';
+  const userProfileImage = avatarUrl(user);
 
   useEffect(() => {
     if (visible && messages.length > 0) {
-      // 메시지가 추가될 때마다 스크롤을 맨 아래로
+      // Keep the newest message visible
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
@@ -49,7 +50,7 @@ export function TravelAIChatModal({ visible, onClose }: TravelAIChatModalProps) 
     const userMessage = inputText.trim();
     setInputText('');
     
-    // 사용자 메시지 추가
+    // Append the user message
     const newUserMessage: ChatMessage = {
       role: 'user',
       content: userMessage,
@@ -58,26 +59,26 @@ export function TravelAIChatModal({ visible, onClose }: TravelAIChatModalProps) 
     setIsLoading(true);
 
     try {
-      // 대화 히스토리 준비 (시스템 메시지 제외)
+      // Conversation history without system messages
       const conversationHistory = messages.filter((msg) => msg.role !== 'system');
       
-      // OpenAI API 호출
+      // Ask the travel assistant
       const response = await openaiService.getTravelRecommendation(
         userMessage,
         conversationHistory
       );
 
-      // AI 응답 추가
+      // Append the assistant reply
       const assistantMessage: ChatMessage = {
         role: 'assistant',
         content: response,
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error: any) {
-      // 에러 메시지 추가
+      // Surface the error in the thread
       const errorMessage: ChatMessage = {
         role: 'assistant',
-        content: `죄송합니다. 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}\n\n다시 시도해주세요.`,
+        content: `Sorry, something went wrong: ${error.message || 'unknown error'}. Please try again.`,
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -86,7 +87,7 @@ export function TravelAIChatModal({ visible, onClose }: TravelAIChatModalProps) 
   };
 
   const handleClose = () => {
-    // 모달 닫을 때 대화 초기화
+    // Reset the conversation when the modal closes
     setMessages([]);
     setInputText('');
     onClose();
@@ -126,7 +127,7 @@ export function TravelAIChatModal({ visible, onClose }: TravelAIChatModalProps) 
           {/* Content Area */}
           <View style={styles.contentArea}>
             {!hasStartedChat ? (
-              // 초기 화면: 시작 가이드
+              // Empty state with quick prompts
               <View style={styles.initialScreen}>
                 <View style={styles.aiAvatarContainer}>
                   <View style={styles.aiAvatar}>
@@ -155,7 +156,7 @@ export function TravelAIChatModal({ visible, onClose }: TravelAIChatModalProps) 
                 </View>
               </View>
             ) : (
-              // 채팅 화면: 메시지 목록
+              // Message thread
               <ScrollView
                 ref={scrollViewRef}
                 style={styles.messagesContainer}
@@ -287,7 +288,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  // 초기 화면 스타일
+  // Empty state
   initialScreen: {
     flex: 1,
     paddingHorizontal: 20,
@@ -342,7 +343,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     flex: 1,
   },
-  // 채팅 화면 스타일
+  // Message thread
   messagesContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -408,7 +409,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     backgroundColor: '#F3F4F6',
   },
-  // 입력 영역 스타일
+  // Composer
   inputWrapper: {
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',

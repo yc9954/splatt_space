@@ -1,25 +1,28 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Link, router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  ActivityIndicator,
-  ScrollView,
+  View,
 } from 'react-native';
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
-import { Link, router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-// WebBrowser를 완료 후 닫도록 설정
-WebBrowser.maybeCompleteAuthSession();
+import { BRAND, Colors, Radii } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
+
+function showError(title: string, message: string) {
+  if (Platform.OS === 'web') window.alert(`${title}\n\n${message}`);
+  else Alert.alert(title, message);
+}
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
@@ -27,241 +30,89 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const { register } = useAuth();
+  const { register, isDemo } = useAuth();
 
   const handleRegister = async () => {
     if (!email || !username || !password || !confirmPassword) {
-      Alert.alert('오류', '모든 필드를 입력해주세요.');
+      showError('Missing details', 'Please fill in every field.');
       return;
     }
-
     if (password !== confirmPassword) {
-      Alert.alert('오류', '비밀번호가 일치하지 않습니다.');
+      showError('Passwords differ', 'The two passwords do not match.');
       return;
     }
-
     if (password.length < 6) {
-      Alert.alert('오류', '비밀번호는 최소 6자 이상이어야 합니다.');
+      showError('Password too short', 'Use at least 6 characters.');
       return;
     }
 
     setIsLoading(true);
     try {
-      await register({ email, username, password });
+      await register({ email, username: username.trim(), password });
       router.replace('/(tabs)/feed');
     } catch (error: any) {
-      Alert.alert(
-        '회원가입 실패',
-        error.response?.data?.message || '회원가입 중 오류가 발생했습니다.'
-      );
+      showError('Could not create account', error?.message || 'Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const signInWithGoogle = async () => {
-    try {
-      setIsGoogleLoading(true);
-      
-      // 환경 변수 로드
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseAnonKey) {
-        Alert.alert(
-          '설정 필요',
-          'Supabase 환경 변수가 설정되지 않았습니다.\n\n.env 파일에 EXPO_PUBLIC_SUPABASE_URL과 EXPO_PUBLIC_SUPABASE_ANON_KEY를 추가해주세요.'
-        );
-        return;
-      }
-
-      // Supabase OAuth URL 생성
-      const redirectUrl = AuthSession.makeRedirectUri({
-        scheme: 'splatspace',
-      });
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectUrl,
-        },
-      });
-
-      if (error) {
-        console.error('Supabase OAuth error:', error);
-        Alert.alert('로그인 실패', error.message || 'Google 로그인에 실패했습니다.');
-        return;
-      }
-
-      if (data?.url) {
-        // OAuth URL로 브라우저 열기
-        const result = await WebBrowser.openAuthSessionAsync(
-          data.url,
-          redirectUrl
-        );
-
-        if (result.type === 'success') {
-          // URL에서 토큰 추출
-          const url = new URL(result.url);
-          const accessToken = url.searchParams.get('access_token');
-          const refreshToken = url.searchParams.get('refresh_token');
-
-          if (accessToken) {
-            // 세션 설정
-            const { error: sessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken || '',
-            });
-
-            if (sessionError) {
-              console.error('Session error:', sessionError);
-              Alert.alert('로그인 실패', '세션 설정에 실패했습니다.');
-            } else {
-              console.log('Login success');
-              router.replace('/(tabs)/feed');
-            }
-          }
-        } else if (result.type === 'cancel') {
-          console.log('User cancelled the login flow');
-        }
-      }
-    } catch (error: any) {
-      console.error('Google sign in error:', error);
-      Alert.alert('로그인 실패', error.message || 'Google 로그인에 실패했습니다.');
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  };
-
   return (
     <View style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.content}>
-            {/* 로고 섹션 */}
-            <View style={styles.logoContainer}>
-              <Text style={styles.appName}>SplatSpace</Text>
+      <LinearGradient colors={[...Colors.gradient]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} bounces={false}>
+          <SafeAreaView edges={['top']} style={styles.hero}>
+            <TouchableOpacity style={styles.back} onPress={() => router.back()} hitSlop={8}>
+              <Ionicons name="arrow-back" size={24} color={Colors.white} />
+            </TouchableOpacity>
+            <View style={styles.logoCircle}>
+              <Ionicons name="cube" size={34} color={Colors.white} />
             </View>
+            <Text style={styles.title}>Join {BRAND.name}</Text>
+            <Text style={styles.tagline}>Start capturing places in 3D</Text>
+          </SafeAreaView>
 
-            {/* 회원가입 폼 */}
-            <View style={styles.formContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="이메일"
-                placeholderTextColor="#999999"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
-
-              <TextInput
-                style={styles.input}
-                placeholder="사용자 이름"
-                placeholderTextColor="#999999"
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-                autoComplete="username"
-              />
-
-              <View style={styles.passwordContainer}>
-                <TextInput
-                  style={styles.passwordInput}
-                  placeholder="비밀번호 (최소 6자)"
-                  placeholderTextColor="#999999"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoComplete="password"
-                />
-                <TouchableOpacity
-                  style={styles.eyeIcon}
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye-off" : "eye"}
-                    size={20}
-                    color="#999999"
-                  />
-                </TouchableOpacity>
+          <View style={styles.card}>
+            {isDemo && (
+              <View style={styles.demoBanner}>
+                <Ionicons name="flask-outline" size={16} color={Colors.primaryDark} />
+                <Text style={styles.demoText}>Demo mode: the account lives on this device only.</Text>
               </View>
+            )}
 
-              <View style={styles.passwordContainer}>
-                <TextInput
-                  style={styles.passwordInput}
-                  placeholder="비밀번호 확인"
-                  placeholderTextColor="#999999"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirmPassword}
-                  autoComplete="password"
-                />
-                <TouchableOpacity
-                  style={styles.eyeIcon}
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  <Ionicons
-                    name={showConfirmPassword ? "eye-off" : "eye"}
-                    size={20}
-                    color="#999999"
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity
-                style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
-                onPress={handleRegister}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.registerButtonText}>회원가입</Text>
-                )}
-              </TouchableOpacity>
-
-              {/* 구분선 */}
-              <View style={styles.dividerContainer}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>또는</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              {/* Google 로그인 버튼 */}
-              <TouchableOpacity
-                style={[styles.googleButton, isGoogleLoading && styles.googleButtonDisabled]}
-                onPress={signInWithGoogle}
-                disabled={isGoogleLoading}
-              >
-                {isGoogleLoading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <>
-                    <Ionicons name="logo-google" size={20} color="#FFFFFF" style={styles.googleIcon} />
-                    <Text style={styles.googleButtonText}>Google로 로그인</Text>
-                  </>
-                )}
+            <View style={styles.inputRow}>
+              <Ionicons name="mail-outline" size={20} color={Colors.textMuted} />
+              <TextInput style={styles.input} placeholder="Email" placeholderTextColor={Colors.textMuted} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" />
+            </View>
+            <View style={styles.inputRow}>
+              <Ionicons name="at-outline" size={20} color={Colors.textMuted} />
+              <TextInput style={styles.input} placeholder="Username" placeholderTextColor={Colors.textMuted} value={username} onChangeText={setUsername} autoCapitalize="none" autoComplete="username" />
+            </View>
+            <View style={styles.inputRow}>
+              <Ionicons name="lock-closed-outline" size={20} color={Colors.textMuted} />
+              <TextInput style={styles.input} placeholder="Password (min. 6 characters)" placeholderTextColor={Colors.textMuted} value={password} onChangeText={setPassword} secureTextEntry={!showPassword} autoComplete="new-password" />
+              <TouchableOpacity onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
+                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />
               </TouchableOpacity>
             </View>
+            <View style={styles.inputRow}>
+              <Ionicons name="checkmark-circle-outline" size={20} color={Colors.textMuted} />
+              <TextInput style={styles.input} placeholder="Confirm password" placeholderTextColor={Colors.textMuted} value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry={!showPassword} autoComplete="new-password" onSubmitEditing={handleRegister} />
+            </View>
 
-            {/* 로그인 링크 */}
+            <TouchableOpacity style={[styles.primaryButton, isLoading && styles.disabled]} onPress={handleRegister} disabled={isLoading} activeOpacity={0.9}>
+              {isLoading ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.primaryButtonText}>Create account</Text>}
+            </TouchableOpacity>
+
+            <Text style={styles.terms}>By continuing you agree to share captures responsibly and respect the places you record.</Text>
+
             <View style={styles.footer}>
-              <Text style={styles.footerText}>이미 계정이 있으신가요? </Text>
+              <Text style={styles.footerText}>Already have an account? </Text>
               <Link href="/(auth)/login" asChild>
                 <TouchableOpacity>
-                  <Text style={styles.footerLink}>로그인</Text>
+                  <Text style={styles.footerLink}>Log in</Text>
                 </TouchableOpacity>
               </Link>
             </View>
@@ -275,134 +126,129 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.primary,
   },
-  keyboardView: {
+  flex: {
     flex: 1,
   },
-  scrollContent: {
+  scroll: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingVertical: 40,
+    justifyContent: 'flex-end',
   },
-  content: {
-    flex: 1,
+  hero: {
+    minHeight: 220,
+    alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    maxWidth: 400,
-    width: '100%',
-    alignSelf: 'center',
+    paddingVertical: 32,
   },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 60,
-  },
-  appName: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000000',
-    letterSpacing: 2,
-  },
-  formContainer: {
-    marginBottom: 24,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    fontSize: 15,
-    color: '#000000',
-    marginBottom: 10,
-    backgroundColor: '#FFFFFF',
-  },
-  passwordContainer: {
-    position: 'relative',
-    marginBottom: 10,
-  },
-  passwordInput: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    paddingRight: 45,
-    fontSize: 15,
-    color: '#000000',
-    backgroundColor: '#FFFFFF',
-  },
-  eyeIcon: {
+  back: {
     position: 'absolute',
-    right: 16,
-    top: 14,
-    padding: 4,
-  },
-  registerButton: {
-    backgroundColor: '#000000',
-    borderRadius: 8,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  registerButtonDisabled: {
-    opacity: 0.7,
-  },
-  registerButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E0E0E0',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    color: '#999999',
-    fontSize: 14,
-  },
-  googleButton: {
-    flexDirection: 'row',
+    left: 16,
+    top: 16,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4285F4',
-    borderRadius: 8,
-    paddingVertical: 16,
-    marginTop: 8,
   },
-  googleButtonDisabled: {
+  logoCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  title: {
+    fontSize: 30,
+    fontWeight: '700',
+    color: Colors.white,
+    letterSpacing: -0.5,
+    marginBottom: 6,
+  },
+  tagline: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  card: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 40,
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
+  },
+  demoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.primarySoft,
+    padding: 12,
+    borderRadius: Radii.md,
+    marginBottom: 18,
+  },
+  demoText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.primaryDark,
+    fontWeight: '500',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.borderStrong,
+    borderRadius: Radii.md,
+    paddingHorizontal: 16,
+    height: 52,
+    marginBottom: 14,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: Colors.text,
+  },
+  primaryButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: Radii.md,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+    marginBottom: 16,
+  },
+  primaryButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  disabled: {
     opacity: 0.7,
   },
-  googleIcon: {
-    marginRight: 8,
-  },
-  googleButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+  terms: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 20,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 20,
+    flexWrap: 'wrap',
   },
   footerText: {
-    color: '#666666',
-    fontSize: 15,
+    color: Colors.textSecondary,
+    fontSize: 14,
   },
   footerLink: {
-    color: '#000000',
-    fontSize: 15,
+    color: Colors.primary,
+    fontSize: 14,
     fontWeight: '600',
-    textDecorationLine: 'underline',
   },
 });

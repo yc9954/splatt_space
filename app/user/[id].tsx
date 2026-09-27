@@ -1,20 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Image,
-  FlatList,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ProfileGrid, ProfileHeader, type ProfileTab } from '@/components/ProfileHeader';
+import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/services/api';
 import type { Post, User } from '@/types';
+
+function notify(title: string, message: string) {
+  if (Platform.OS === 'web') window.alert(`${title}\n\n${message}`);
+  else Alert.alert(title, message);
+}
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,207 +23,100 @@ export default function UserProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const [tab, setTab] = useState<ProfileTab>('posts');
 
   useEffect(() => {
-    if (id) {
-      loadUserProfile();
-      loadUserPosts();
-      if (currentUser) {
-        checkFollowStatus();
+    if (!id) return;
+    let active = true;
+    (async () => {
+      try {
+        const [profile, userPosts, following] = await Promise.all([
+          api.getUserProfile(id),
+          api.getUserPosts(id),
+          currentUser ? api.isFollowing(id, currentUser.id) : Promise.resolve(false),
+        ]);
+        if (!active) return;
+        setUser(profile);
+        setPosts(userPosts);
+        setIsFollowing(following);
+      } catch (error) {
+        console.warn('Failed to load profile:', error);
+        notify('Profile unavailable', 'This profile could not be loaded.');
+      } finally {
+        if (active) setIsLoading(false);
       }
-    }
+    })();
+    return () => {
+      active = false;
+    };
   }, [id, currentUser]);
-
-  const loadUserProfile = async () => {
-    if (!id) return;
-
-    try {
-      const userData = await api.getUserProfile(id);
-      setUser(userData);
-    } catch (error) {
-      console.error('Failed to load user profile:', error);
-      Alert.alert('오류', '사용자 프로필을 불러올 수 없습니다.');
-    }
-  };
-
-  const loadUserPosts = async () => {
-    if (!id) return;
-
-    try {
-      const data = await api.getUserPosts(id);
-      setPosts(data);
-    } catch (error) {
-      console.error('Failed to load user posts:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const checkFollowStatus = async () => {
-    if (!id || !currentUser) return;
-
-    try {
-      const following = await api.isFollowing(id, currentUser.id);
-      setIsFollowing(following);
-    } catch (error) {
-      console.error('Failed to check follow status:', error);
-    }
-  };
 
   const handleFollowToggle = async () => {
     if (!id || !user || !currentUser) {
-      Alert.alert('오류', '로그인이 필요합니다.');
+      notify('Sign in required', 'Log in to follow people.');
       return;
     }
-
     setIsFollowLoading(true);
     try {
       if (isFollowing) {
         await api.unfollowUser(id, currentUser.id);
         setIsFollowing(false);
-        setUser({ ...user, followersCount: user.followersCount - 1 });
+        setUser({ ...user, followersCount: Math.max(0, user.followersCount - 1) });
       } else {
         await api.followUser(id, currentUser.id);
         setIsFollowing(true);
         setUser({ ...user, followersCount: user.followersCount + 1 });
       }
     } catch (error: any) {
-      console.error('Failed to toggle follow:', error);
-      Alert.alert('오류', error.message || '팔로우 처리 중 오류가 발생했습니다.');
+      notify('Something went wrong', error?.message || 'Could not update follow state.');
     } finally {
       setIsFollowLoading(false);
     }
   };
 
-  const handleFollowersPress = () => {
-    if (id) {
-      router.push(`/user/${id}/followers`);
-    }
-  };
-
-  const handleFollowingPress = () => {
-    if (id) {
-      router.push(`/user/${id}/following`);
-    }
-  };
-
-  const renderPost = ({ item }: { item: Post }) => (
-    <TouchableOpacity
-      style={styles.gridItem}
-      onPress={() => router.push({
-        pathname: '/asset-viewer',
-        params: { postId: item.id }
-      })}
-    >
-      <Image
-        source={{ uri: item.imageUrl }}
-        style={styles.gridImage}
-      />
-    </TouchableOpacity>
-  );
-
   const isOwnProfile = currentUser?.id === id;
-
-  if (isLoading || !user) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>프로필</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#1F2937" />
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const visiblePosts = tab === '3d' ? posts.filter((p) => p.is3D) : posts;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <Ionicons name="arrow-back" size={24} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{user.username}</Text>
+        <Text style={styles.headerTitle}>{user ? `@${user.username}` : 'Profile'}</Text>
         <View style={{ width: 24 }} />
       </View>
 
-      <FlatList
-        data={posts}
-        renderItem={renderPost}
-        keyExtractor={(item) => item.id}
-        numColumns={3}
-        ListHeaderComponent={
-          <View style={styles.profileHeader}>
-            <Image
-              source={{ uri: user.profileImage || 'https://cdn-luma.com/public/avatars/avatar-default.jpg' }}
-              style={styles.profileImage}
+      {isLoading || !user ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      ) : (
+        <ProfileGrid
+          posts={visiblePosts}
+          onPostPress={(postId) => router.push({ pathname: '/asset-viewer', params: { postId } })}
+          header={
+            <ProfileHeader
+              user={{ ...user, postsCount: posts.length || user.postsCount }}
+              isOwnProfile={isOwnProfile}
+              activeTab={tab}
+              onTabChange={setTab}
+              isFollowing={isFollowing}
+              isFollowLoading={isFollowLoading}
+              onFollowToggle={handleFollowToggle}
+              onEditProfile={() => router.push('/(tabs)/profile')}
+              onFollowersPress={() => router.push(`/user/${id}/followers`)}
+              onFollowingPress={() => router.push(`/user/${id}/following`)}
             />
-            <View style={styles.usernameContainer}>
-              <Text style={styles.username}>{user.username}</Text>
-              {user.followersCount >= 5000 && (
-                <View style={styles.verifiedBadge}>
-                  <Ionicons name="checkmark-circle" size={20} color="#3B82F6" />
-                </View>
-              )}
+          }
+          empty={
+            <View style={styles.empty}>
+              <Ionicons name="cube-outline" size={56} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>{tab === '3d' ? 'No 3D captures yet' : 'No posts yet'}</Text>
             </View>
-            {user.bio && <Text style={styles.bio}>{user.bio}</Text>}
-
-            <View style={styles.stats}>
-              <View style={styles.stat}>
-                <Text style={styles.statNumber}>{user.postsCount}</Text>
-                <Text style={styles.statLabel}>게시물</Text>
-              </View>
-              <TouchableOpacity style={styles.stat} onPress={handleFollowersPress}>
-                <Text style={styles.statNumber}>{user.followersCount}</Text>
-                <Text style={styles.statLabel}>팔로워</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.stat} onPress={handleFollowingPress}>
-                <Text style={styles.statNumber}>{user.followingCount}</Text>
-                <Text style={styles.statLabel}>팔로잉</Text>
-              </TouchableOpacity>
-            </View>
-
-            {!isOwnProfile && (
-              <TouchableOpacity
-                style={[
-                  styles.followButton,
-                  isFollowing && styles.followingButton,
-                ]}
-                onPress={handleFollowToggle}
-                disabled={isFollowLoading}
-              >
-                {isFollowLoading ? (
-                  <ActivityIndicator size="small" color={isFollowing ? "#1F2937" : "#FFFFFF"} />
-                ) : (
-                  <Text
-                    style={[
-                      styles.followButtonText,
-                      isFollowing && styles.followingButtonText,
-                    ]}
-                  >
-                    {isFollowing ? '팔로잉' : '팔로우'}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            )}
-
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>게시물</Text>
-            </View>
-          </View>
-        }
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="images-outline" size={64} color="#D1D5DB" />
-            <Text style={styles.emptyText}>아직 게시물이 없습니다</Text>
-          </View>
-        }
-      />
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -232,153 +124,35 @@ export default function UserProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.surface,
   },
   header: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#E5E7EB',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: Colors.text,
   },
-  profileHeader: {
-    backgroundColor: '#FFFFFF',
-    padding: 32,
-    paddingBottom: 24,
-    alignItems: 'center',
-  },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginBottom: 16,
-    borderWidth: 3,
-    borderColor: '#F3F4F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  usernameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-    gap: 6,
-  },
-  username: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#1F2937',
-    letterSpacing: -0.5,
-  },
-  verifiedBadge: {
-    marginLeft: 4,
-  },
-  bio: {
-    fontSize: 15,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 22,
-  },
-  stats: {
-    flexDirection: 'row',
-    gap: 40,
-    marginBottom: 24,
-  },
-  stat: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1F2937',
-    letterSpacing: -0.3,
-  },
-  statLabel: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  followButton: {
-    backgroundColor: '#1F2937',
-    paddingHorizontal: 48,
-    paddingVertical: 12,
-    borderRadius: 10,
-    marginBottom: 32,
-    minWidth: 120,
-    alignItems: 'center',
-  },
-  followingButton: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  followButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  followingButtonText: {
-    color: '#1F2937',
-  },
-  sectionHeader: {
-    width: '100%',
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    borderTopWidth: 0.5,
-    borderTopColor: '#E5E7EB',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
-    letterSpacing: -0.3,
-  },
-  listContent: {
-    flexGrow: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  gridItem: {
-    flex: 1 / 3,
-    aspectRatio: 1,
-    padding: 0.5,
-    position: 'relative',
-  },
-  gridImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#F3F4F6',
-  },
-  centerContainer: {
+  center: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 64,
-    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  empty: {
     alignItems: 'center',
-    paddingVertical: 64,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 48,
+    gap: 12,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 16,
+    fontSize: 15,
+    color: Colors.textSecondary,
     fontWeight: '500',
   },
 });
