@@ -42,3 +42,9 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Supabase CLI local state (contains project ref / pooler url)
+supabase/.temp/
+
+# screenshots tooling
+.playwright/

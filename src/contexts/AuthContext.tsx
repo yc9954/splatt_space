@@ -1,13 +1,19 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { SupabaseAPI } from '@/services/supabase-api';
-import { StorageService } from '@/services/storage';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
+
+import { isDemoMode } from '@/lib/config';
 import { supabase } from '@/lib/supabase';
-import type { User, LoginRequest, RegisterRequest } from '@/types';
+import { DemoAPI } from '@/services/demo';
+import { StorageService } from '@/services/storage';
+import { SupabaseAPI } from '@/services/supabase-api';
+import type { LoginRequest, RegisterRequest, User } from '@/types';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  /** True when running against the bundled in-memory backend. */
+  isDemo: boolean;
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
@@ -16,194 +22,144 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/** Build a usable User from the Supabase auth record when no profile row exists yet. */
+function userFromSupabase(supabaseUser: SupabaseUser): User {
+  const meta = supabaseUser.user_metadata ?? {};
+  const displayName =
+    meta.full_name || meta.name || meta.username || supabaseUser.email?.split('@')[0] || 'user';
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email || '',
+    username: displayName,
+    profileImage: meta.avatar_url || meta.picture,
+    bio: meta.bio || '',
+    followersCount: 0,
+    followingCount: 0,
+    postsCount: 0,
+    createdAt: supabaseUser.created_at || new Date().toISOString(),
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const persistSession = async (session: Session, profile: User) => {
+    await StorageService.saveAuthToken(session.access_token);
+    await StorageService.saveUserData(profile);
+    setUser(profile);
+  };
+
+  const loadProfileForSession = async (session: Session) => {
+    try {
+      const profile = await SupabaseAPI.getProfile(session.user.id, session.user);
+      await persistSession(session, profile);
+    } catch (error) {
+      console.warn('Profile load failed, using auth metadata instead:', error);
+      await persistSession(session, userFromSupabase(session.user));
+    }
+  };
+
+  // ---------- Demo mode: everything is local ----------
+  const checkAuthDemo = async () => {
+    try {
+      const stored = await StorageService.getUserData();
+      if (stored) {
+        DemoAPI.setCurrentUser(stored);
+        setUser(stored);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ---------- Supabase mode ----------
+  const checkAuthSupabase = async () => {
+    try {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+      if (error) console.warn('Session check error:', error.message);
+
+      if (session?.user) {
+        await loadProfileForSession(session);
+      } else {
+        // Clear any orphaned local data from a previous session.
+        const token = await StorageService.getAuthToken();
+        const userData = await StorageService.getUserData();
+        if (token || userData) await StorageService.clearAll();
+      }
+    } catch (error) {
+      console.warn('Auth check error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    checkAuth();
+    if (isDemoMode) {
+      checkAuthDemo();
+      return;
+    }
 
-    // Supabase 인증 상태 변경 리스너 설정
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email);
+    checkAuthSupabase();
 
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        console.log('🔐 User signed in, loading profile...');
-        const profileStartTime = Date.now();
-
-        // 로그인 성공 시 프로필 정보 가져오기
-        const supabaseUser = session.user;
-
-        try {
-          // Profile 테이블에서 실제 데이터 가져오기 (사용자 정보를 전달해서 불필요한 getUser() 호출 방지)
-          const profile = await SupabaseAPI.getProfile(supabaseUser.id, supabaseUser);
-          await StorageService.saveAuthToken(session.access_token);
-          await StorageService.saveUserData(profile);
-          setUser(profile);
-          console.log(`✅ Profile loaded in ${Date.now() - profileStartTime}ms`);
-        } catch (error: any) {
-          console.error('Failed to load profile on sign in:', error);
-          // 네트워크 에러인 경우 재시도하지 않고 기본 정보 사용
-          if (error?.message?.includes('Network request failed')) {
-            console.warn('Network error during profile load, using basic user info');
-          }
-
-          // Profile 로드 실패 시 기본 정보 사용
-          const displayName = supabaseUser.user_metadata?.full_name
-            || supabaseUser.user_metadata?.name
-            || supabaseUser.user_metadata?.username
-            || supabaseUser.email?.split('@')[0]
-            || 'user';
-
-          const convertedUser: User = {
-            id: supabaseUser.id,
-            email: supabaseUser.email || '',
-            username: displayName,
-            profileImage: supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture,
-            bio: supabaseUser.user_metadata?.bio || '',
-            followersCount: 0,
-            followingCount: 0,
-            postsCount: 0,
-            createdAt: supabaseUser.created_at || new Date().toISOString(),
-          };
-
-          await StorageService.saveAuthToken(session.access_token);
-          await StorageService.saveUserData(convertedUser);
-          setUser(convertedUser);
-        }
+        await loadProfileForSession(session);
       } else if (event === 'SIGNED_OUT') {
-        // 로그아웃 시 상태 초기화
         await StorageService.clearAll();
         setUser(null);
       }
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const checkAuth = async () => {
-    const checkStartTime = Date.now();
-    try {
-      console.log('🔍 Checking auth status...');
-
-      // 먼저 Supabase 세션 확인 (AsyncStorage에서 자동 복원)
-      const { data: { session }, error } = await supabase.auth.getSession();
-      console.log(`⏱️ Session check took ${Date.now() - checkStartTime}ms`);
-
-      if (error) {
-        console.error('Session check error:', error);
-      }
-
-      if (session?.user) {
-        console.log('✅ Supabase session found:', session.user.email);
-        const profileStartTime = Date.now();
-
-        // Profile 정보 가져오기 (팔로워/팔로잉 카운트 포함, 세션 user 정보 전달)
-        try {
-          const profile = await SupabaseAPI.getProfile(session.user.id, session.user);
-          await StorageService.saveAuthToken(session.access_token);
-          await StorageService.saveUserData(profile);
-          setUser(profile);
-          console.log(`✅ Profile loaded in checkAuth: ${Date.now() - profileStartTime}ms`);
-          setIsLoading(false);
-          return;
-        } catch (profileError) {
-          console.error('Failed to load profile, using basic user info:', profileError);
-          // Profile 로드 실패 시 기본 정보 사용
-        }
-
-        // Profile 로드 실패 시 Supabase 사용자 정보 사용
-        const supabaseUser = session.user;
-        const displayName = supabaseUser.user_metadata?.full_name
-          || supabaseUser.user_metadata?.name
-          || supabaseUser.user_metadata?.username
-          || supabaseUser.email?.split('@')[0]
-          || 'user';
-
-        const convertedUser: User = {
-          id: supabaseUser.id,
-          email: supabaseUser.email || '',
-          username: displayName,
-          profileImage: supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture,
-          bio: supabaseUser.user_metadata?.bio || '',
-          followersCount: 0,
-          followingCount: 0,
-          postsCount: 0,
-          createdAt: supabaseUser.created_at || new Date().toISOString(),
-        };
-
-        await StorageService.saveAuthToken(session.access_token);
-        await StorageService.saveUserData(convertedUser);
-        setUser(convertedUser);
-      } else {
-        console.log('❌ No Supabase session found');
-
-        // AsyncStorage를 직접 확인하여 orphaned 데이터 클리어
-        const token = await StorageService.getAuthToken();
-        const userData = await StorageService.getUserData();
-
-        if (token || userData) {
-          console.log('⚠️ Found orphaned local storage data, clearing...');
-          await StorageService.clearAll();
-        }
-      }
-    } catch (error) {
-      console.error('Auth check error:', error);
-    } finally {
-      const totalTime = Date.now() - checkStartTime;
-      console.log(`⏱️ Total auth check took ${totalTime}ms`);
-      setIsLoading(false);
-    }
-  };
-
   const login = async (data: LoginRequest) => {
-    try {
-      console.log('🔑 Logging in with email...');
-      // SupabaseAPI를 직접 호출하여 중복 프로필 조회 방지
-      // onAuthStateChange 리스너가 프로필을 자동으로 로드함
-      await SupabaseAPI.signInWithEmail(data.email, data.password);
-      console.log('✅ Login successful - profile will be loaded by auth listener');
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
+    if (isDemoMode) {
+      const profile = await DemoAPI.signInWithEmail(data.email, data.password);
+      await StorageService.saveAuthToken('demo');
+      await StorageService.saveUserData(profile);
+      setUser(profile);
+      return;
     }
+    // The auth listener loads the profile once Supabase confirms the session.
+    await SupabaseAPI.signInWithEmail(data.email, data.password);
   };
 
   const register = async (data: RegisterRequest) => {
-    try {
-      console.log('📝 Registering new user...');
-      // SupabaseAPI를 직접 호출하여 중복 프로필 조회 방지
-      // 트리거가 자동으로 프로필을 생성하고, onAuthStateChange 리스너가 로드함
-      await SupabaseAPI.signUpWithEmail(data.email, data.password, data.username);
-      console.log('✅ Registration successful - profile will be created by trigger and loaded by auth listener');
-    } catch (error) {
-      console.error('Register error:', error);
-      throw error;
+    if (isDemoMode) {
+      const profile = await DemoAPI.signUpWithEmail(data.email, data.password, data.username);
+      await StorageService.saveAuthToken('demo');
+      await StorageService.saveUserData(profile);
+      setUser(profile);
+      return;
     }
+    await SupabaseAPI.signUpWithEmail(data.email, data.password, data.username);
   };
 
   const logout = async () => {
+    setUser(null);
+    await StorageService.clearAll();
+    if (isDemoMode) {
+      await DemoAPI.signOut();
+      return;
+    }
     try {
-      console.log('🚪 Logging out...');
-      // 상태 먼저 초기화 (UI 즉시 반영)
-      setUser(null);
-      // 로컬 스토리지 클리어
-      await StorageService.clearAll();
-      // Supabase 세션 완전히 제거 (모든 탭/창에서)
       await supabase.auth.signOut({ scope: 'local' });
-      console.log('✅ Logout complete');
     } catch (error) {
-      console.error('Logout error:', error);
-      // 에러가 나도 로컬 상태는 클리어
-      setUser(null);
-      await StorageService.clearAll();
+      console.warn('Logout error:', error);
     }
   };
 
   const refreshAuth = async () => {
-    await checkAuth();
+    if (isDemoMode) await checkAuthDemo();
+    else await checkAuthSupabase();
   };
 
   return (
@@ -212,6 +168,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
+        isDemo: isDemoMode,
         login,
         register,
         logout,

@@ -1,78 +1,64 @@
-const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-
-// 디버깅: 환경 변수 로드 확인
-console.log('🔍 OpenAI 환경 변수 체크:');
-console.log('  EXPO_PUBLIC_OPENAI_API_KEY:', OPENAI_API_KEY ? `${OPENAI_API_KEY.substring(0, 10)}...` : '❌ 없음');
+import { config, OPENAI_CHAT_URL } from '@/lib/config';
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
 }
 
-export interface TravelRecommendationResponse {
-  recommendations: string[];
-  message: string;
-}
+const SYSTEM_PROMPT = `You are Splatt Space's travel assistant: friendly, concise and practical.
+You ONLY answer questions related to travel: destinations, itineraries, tourism, local tips, packing and planning.
+If a user asks about anything unrelated to travel, politely decline and remind them you can only help with travel questions.
+When recommending destinations, give concrete reasons and, where useful, suggest spots that would make a great 3D capture.`;
+
+const DEMO_REPLIES = [
+  'In demo mode I cannot reach OpenAI, but here is a tip: golden hour light makes the best Gaussian-splat captures. Try a slow, full circle around your subject.',
+  'Demo mode reply: for a first 3D capture, pick a statue, a fountain or a small building. Walk around it twice, keeping the camera steady and the subject centred.',
+  'Demo mode reply: Lisbon, Kyoto and Cusco are all fantastic for capture walks, with textured streets and strong shadows that splats render beautifully.',
+];
 
 class OpenAIService {
-  private async makeRequest(messages: ChatMessage[]) {
-    if (!OPENAI_API_KEY) {
-      throw new Error(
-        'OpenAI API 키가 설정되지 않았습니다.\n' +
-        '프로젝트 루트에 .env 파일을 생성하고 EXPO_PUBLIC_OPENAI_API_KEY를 설정하세요.'
-      );
+  readonly isConfigured = Boolean(config.openaiApiKey);
+
+  private async makeRequest(messages: ChatMessage[]): Promise<string> {
+    if (!config.openaiApiKey) {
+      // Keep the chat usable without a key so the screen can be demoed.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return DEMO_REPLIES[Math.floor(Math.random() * DEMO_REPLIES.length)];
     }
 
-    try {
-      const response = await fetch(OPENAI_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: messages,
-          temperature: 0.7,
-          max_tokens: 1000,
-        }),
-      });
+    const response = await fetch(OPENAI_CHAT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.openaiApiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages,
+        temperature: 0.7,
+        max_tokens: 1000,
+      }),
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error?.message || 
-          `OpenAI API 오류: ${response.status} ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
-      return data.choices[0]?.message?.content || '';
-    } catch (error: any) {
-      console.error('OpenAI API Error:', error);
-      throw new Error(error.message || 'OpenAI API 호출 중 오류가 발생했습니다.');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || `OpenAI API error: ${response.status} ${response.statusText}`);
     }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || '';
   }
 
-  async getTravelRecommendation(userMessage: string, conversationHistory: ChatMessage[] = []): Promise<string> {
-    const systemPrompt = `You are a friendly and professional travel recommendation AI assistant. 
-You ONLY answer questions related to travel, destinations, tourism, vacation planning, and travel-related topics.
-If a user asks about anything NOT related to travel (such as general knowledge, math, programming, cooking, etc.), you must politely decline and remind them that you can only help with travel-related questions.
-When answering travel questions, provide helpful recommendations, destination information, and travel tips in a friendly and conversational manner.
-Include specific reasons and features when recommending destinations.`;
-
-    const messages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt },
+  getTravelRecommendation(userMessage: string, conversationHistory: ChatMessage[] = []): Promise<string> {
+    return this.makeRequest([
+      { role: 'system', content: SYSTEM_PROMPT },
       ...conversationHistory,
       { role: 'user', content: userMessage },
-    ];
-
-    return await this.makeRequest(messages);
+    ]);
   }
 
-  async chat(messages: ChatMessage[]): Promise<string> {
-    return await this.makeRequest(messages);
+  chat(messages: ChatMessage[]): Promise<string> {
+    return this.makeRequest(messages);
   }
 }
 

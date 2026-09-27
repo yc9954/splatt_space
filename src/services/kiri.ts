@@ -1,9 +1,10 @@
 import axios from 'axios';
+import { config, isDemoMode, KIRI_API_URL } from '@/lib/config';
 import { supabase } from '@/lib/supabase';
 
-const KIRI_API_KEY = process.env.EXPO_PUBLIC_KIRI_API_KEY || '';
-const KIRI_API_URL = 'https://api.kiriengine.app/api/v1';
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const KIRI_API_KEY = config.kiriApiKey ?? '';
+// Task records only go to Supabase when a real backend is configured.
+const SUPABASE_URL = isDemoMode ? '' : (config.supabaseUrl ?? '');
 
 export interface KiriVideoUploadRequest {
   videoFile: string; // Local file URI
