@@ -4,7 +4,9 @@
 travel captures: record a place with your phone, turn it into a splat, edit it
 in a live 3D scene and share it in a feed that people can walk around in.
 
-![Splatt Space screens](docs/screenshots/overview.png)
+<p align="center">
+  <img src="docs/screenshots/overview.png" alt="Splatt Space screens: login, feed, viewer, capture, editor, profile, explore and travel side by side" width="960" />
+</p>
 
 Built with Expo Router and React Native, backed by Supabase, rendered with
 Luma's Web Library on Three.js, and fed by KIRI Engine's video-to-3DGS
@@ -37,17 +39,16 @@ pipeline. Runs on iOS, Android and the web from one codebase, and ships with a
 
 ## Screenshots
 
-| | | |
-| :---: | :---: | :---: |
-| ![Login](docs/screenshots/login.png) | ![Feed](docs/screenshots/feed.png) | ![Asset viewer](docs/screenshots/asset-viewer.png) |
-| **Login** – gradient hero, email/password and Google sign-in; the banner shows when demo mode is active. | **Feed** – live featured splat hero followed by capture cards with 3D badges, likes and comments. | **Asset viewer** – full-screen Gaussian splat with orbit controls and an overlay for likes, comments and the caption. |
-| ![Upload](docs/screenshots/upload.png) | ![Editor](docs/screenshots/edit-asset.png) | ![Profile](docs/screenshots/profile.png) |
-| **Capture** – record a video for KIRI Engine, pick a Luma scene, or post a photo; includes capture tips. | **Editor** – background removal and a 3D text overlay applied live in the scene, then caption, location and tags. | **Profile** – avatar and primary action, stats, Posts / 3D gallery tabs and a three-column grid. |
-| ![Explore](docs/screenshots/explore.png) | ![Search](docs/screenshots/search.png) | ![Travel map](docs/screenshots/travel.png) |
-| **Explore** – dense grid of every capture with like counts and 3D markers. | **Search** – results for places, tags, captions and people. | **Travel** – world map of captures with place search, geolocation and the AI travel assistant. |
+Every screen at the same size, all captured from the web build in demo mode at iPhone size (390x844, 2x).
 
-More: [register](docs/screenshots/register.png), [travel scene modal](docs/screenshots/travel-scene.png).
-Screenshots were taken from the web build in demo mode at iPhone size (390x844, 2x).
+<table>
+<tr><td align="center" width="25%"><img src="docs/screenshots/login.png" alt="Login" width="200" /></td><td align="center" width="25%"><img src="docs/screenshots/feed.png" alt="Feed" width="200" /></td><td align="center" width="25%"><img src="docs/screenshots/asset-viewer.png" alt="Asset viewer" width="200" /></td><td align="center" width="25%"><img src="docs/screenshots/upload.png" alt="Capture" width="200" /></td></tr>
+<tr><td align="center" valign="top"><sub><strong>Login.</strong> Gradient hero, email/password and Google sign-in; the banner shows when demo mode is active.</sub></td><td align="center" valign="top"><sub><strong>Feed.</strong> Live featured splat hero followed by capture cards with 3D badges, likes and comments.</sub></td><td align="center" valign="top"><sub><strong>Asset viewer.</strong> Full-screen Gaussian splat with orbit controls and an overlay for likes, comments and the caption.</sub></td><td align="center" valign="top"><sub><strong>Capture.</strong> Record a video for KIRI Engine, pick a Luma scene, or post a photo; includes capture tips.</sub></td></tr>
+<tr><td align="center" width="25%"><img src="docs/screenshots/edit-asset.png" alt="Editor" width="200" /></td><td align="center" width="25%"><img src="docs/screenshots/profile.png" alt="Profile" width="200" /></td><td align="center" width="25%"><img src="docs/screenshots/explore.png" alt="Explore" width="200" /></td><td align="center" width="25%"><img src="docs/screenshots/search.png" alt="Search" width="200" /></td></tr>
+<tr><td align="center" valign="top"><sub><strong>Editor.</strong> Background removal and a 3D text overlay applied live in the scene, then caption, location and tags.</sub></td><td align="center" valign="top"><sub><strong>Profile.</strong> Avatar and primary action, stats, Posts / 3D gallery tabs and a three-column grid.</sub></td><td align="center" valign="top"><sub><strong>Explore.</strong> Dense grid of every capture with like counts and 3D markers.</sub></td><td align="center" valign="top"><sub><strong>Search.</strong> Results for places, tags, captions and people.</sub></td></tr>
+<tr><td align="center" width="25%"><img src="docs/screenshots/travel.png" alt="Travel" width="200" /></td><td align="center" width="25%"><img src="docs/screenshots/travel-scene.png" alt="Travel scene" width="200" /></td><td align="center" width="25%"><img src="docs/screenshots/register.png" alt="Register" width="200" /></td></tr>
+<tr><td align="center" valign="top"><sub><strong>Travel.</strong> World map of captures with place search, geolocation and the AI travel assistant.</sub></td><td align="center" valign="top"><sub><strong>Travel scene.</strong> The capture modal opened from a map pin.</sub></td><td align="center" valign="top"><sub><strong>Register.</strong> Account creation with the same demo-mode banner.</sub></td></tr>
+</table>
 
 ## Architecture
 
